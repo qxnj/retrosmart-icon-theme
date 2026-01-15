@@ -6,11 +6,43 @@ if [ -f makefile ]; then
 fi
 
 name="retrosmart-icon-theme"
-out="$name/scalable"
+svg_out="$name/scalable"
+png_out="$name/fixed"
+
+make_recipe() {
+	case "${2##*.}" in
+		png)
+			icons="$icons $png_out/$2"
+			printf "$png_out/$2: $name/index.theme\n"
+			if [ -z "$curr_png" ]; then
+				printf "\tmagick -background none src/$1 -resize 48x48 $png_out/${1%.*}.png\n"
+				curr_png=$1
+			fi
+			printf "\tcd $png_out && ln -s ${1%.*}.png $2\n"
+			;;
+		svg)
+			icons="$icons $svg_out/$2"
+			printf "$svg_out/$2: $name/index.theme\n"
+			if [ "$1" = "$2" ]; then
+				printf "\tcp src/$1 $svg_out/$2\n"
+			else
+				printf "\tcd $svg_out && ln -s $1 $2\n"
+			fi
+			;;
+	esac
+}
+
+# Check dependencies
+for cmd in make magick; do
+	if ! command -v "$cmd" > /dev/null; then
+		echo "$cmd not found."
+		exit 2
+	fi
+done
 
 # Get all links
 for i in src/*.links; do
-	# FIXME: The .links file always have the respective image file in the fist
+	# FIXME: The .links file always have the respective image file in the first
 	#        line?
 	source="$(head -n1 "$i")"
 
@@ -37,13 +69,15 @@ done < src/preview.list
 	printf "include makefile.in\n\n"
 
 	printf "$name:\n"
-	printf "\tmkdir -p $out\n"
+	printf "\tmkdir -p $svg_out\n"
+	printf "\tmkdir -p $png_out\n"
 
 	printf "$name/index.theme: $name\n"
 	printf "\tcp src/index.theme $name/\n"
 
 	for i in $links; do
 		source="$(head -n1 "$i")"
+		curr_png=""
 
 		while read -r link_file; do
 			# Empty line
@@ -51,14 +85,8 @@ done < src/preview.list
 				continue
 			fi
 
-			icons="$icons $out/$link_file"
-			printf "$out/$link_file: $name/index.theme\n"
+			make_recipe "$source" "$link_file"
 
-			if [ "$source" = "$link_file" ]; then
-				printf "\tcp src/$source $out/$link_file\n"
-			else
-				printf "\tcd $out && ln -s $source $link_file\n"
-			fi
 		done < "$i"
 	done
 

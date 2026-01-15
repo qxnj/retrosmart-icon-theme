@@ -6,7 +6,7 @@ DESTDIR          =
 # FIXME: OS detection?
 PREFIX           = /usr/local
 
-all: preview.png icons
+all: icons
 
 install:
 	mkdir -p $(DESTDIR)/$(PREFIX)/share/icons
