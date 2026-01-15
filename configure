@@ -1,71 +1,71 @@
 #!/bin/sh
 
-if [ -f makefile ]
-then
-    echo "Configuration done. Run '$([ "$(uname)" = Linux ] && printf %smake||printf %s "gmake -f makefile")'."
-    exit 0
+if [ -f makefile ]; then
+	echo "Configuration done. Run 'make'."
+	exit 0
 fi
 
-name=retrosmart-icon-theme
-path=$name/scalable
-suf='.svg'
+name="retrosmart-icon-theme"
+out="$name/scalable"
 
-for i in src/*.links
-do
-    source="src/$(basename $i .links).svg"
-    if [ -f "$source" ]
-    then
-        links="$links $i"
-    else
-        echo "File $source not found"
-        exit 1
-    fi
+# Get all links
+for i in src/*.links; do
+	# FIXME: The .links file always have the respective image file in the fist
+	#        line?
+	source="$(head -n1 "$i")"
+
+	if [ -f "src/$source" ]; then
+		links="$links $i"
+	else
+		echo "File '$source' referenced in '$i' not found."
+		exit 1
+	fi
 done
 
-for i in $(cat src/preview.list)
-do
-    source="src/$i"
-    if [ -f "$source" ]
-        then
-            preview="$preview $source"
-        else
-            echo "File $source not found"
-            exit 1
-        fi
-done
+# Generate preview file list
+while read -r path; do
+	source="src/$path"
+	if [ -f "$source" ]; then
+		preview="$preview $source"
+	else
+		echo "File '$source' referenced in '$1' not found."
+	fi
+done < src/preview.list
 
-makefile() {
+# Generate makefile
+{
+	printf "include makefile.in\n\n"
 
-echo "include makefile.in"
+	printf "$name:\n"
+	printf "\tmkdir -p $out\n"
 
-echo "$name:"
-printf "\tmkdir -p $path"
+	printf "$name/index.theme: $name\n"
+	printf "\tcp src/index.theme $name/\n"
 
-echo "$name/index.theme: $name"
-printf "\tcp src/index.theme $name/"
+	for i in $links; do
+		source="$(head -n1 "$i")"
 
-for i in $links
-do
-    local source="src/$(basename "$i" .links).svg"
-    local bsource="$(basename "$source")"
-    for j in $(cat $i)
-    do
-        icons="$icons $path/$j"
-        echo "$path/$j: $name/index.theme"
-        if [ "$bsource" = "$j" ]
-        then
-            printf "\tcp $source $path/$j"
-        else
-            printf "\tcd $path && ln -s $bsource $j"
-        fi
-    done
-done
+		while read -r link_file; do
+			# Empty line
+			if [ -z "$link_file" ]; then 
+				continue
+			fi
 
-echo "icons: $icons"
+			icons="$icons $out/$link_file"
+			printf "$out/$link_file: $name/index.theme\n"
 
-echo "preview.png: $preview"
-printf "\tmontage -verbose -resize 64 -geometry +16+16 -tile 9x6 $preview preview.png"
+			if [ "$source" = "$link_file" ]; then
+				printf "\tcp src/$source $out/$link_file\n"
+			else
+				printf "\tcd $out && ln -s $source $link_file\n"
+			fi
+		done < "$i"
+	done
 
-}
+	printf "\nicons: $icons\n\n"
 
-makefile > makefile && echo "Configuration done. Run '$([ "$(uname)" = Linux ] && printf %smake||printf %s "gmake -f makefile")'." || echo "Configuration failed. Please debug."
+	printf "preview.png: $preview\n"
+	printf "\tmontage -verbose -resize 64 -geometry +16+16 -tile 9x6 $preview preview.png\n"
+} > makefile
+
+echo "Configuration done. Run 'make'."
