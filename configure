@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 if [ -f makefile ]
 then
@@ -39,10 +39,10 @@ makefile() {
 echo "include makefile.in"
 
 echo "$name:"
-printf "\tmkdir -p $path"
+echo -e "\tmkdir -p $path"
 
 echo "$name/index.theme: $name"
-printf "\tcp src/index.theme $name/"
+echo -e "\tcp src/index.theme $name/"
 
 for i in $links
 do
@@ -54,9 +54,9 @@ do
         echo "$path/$j: $name/index.theme"
         if [ "$bsource" = "$j" ]
         then
-            printf "\tcp $source $path/$j"
+            echo -e "\tcp $source $path/$j"
         else
-            printf "\tcd $path && ln -s $bsource $j"
+            echo -e "\tcd $path && ln -s $bsource $j"
         fi
     done
 done
@@ -64,7 +64,7 @@ done
 echo "icons: $icons"
 
 echo "preview.png: $preview"
-printf "\tmontage -verbose -resize 64 -geometry +16+16 -tile 9x6 $preview preview.png"
+echo -e "\tmontage -verbose -resize 64 -geometry +16+16 -tile 9x6 $preview preview.png"
 
 }
 
